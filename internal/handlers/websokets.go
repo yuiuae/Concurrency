@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/websocket"
+	"github.com/yuiuae/Concurrency/internal/db"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -26,27 +28,31 @@ func RequestWithToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, exists := usersTable[username]
+	_, exists := connTable[username]
 	if !exists {
 		errorlog(w, "User error", http.StatusBadRequest)
 		return
 	}
 
-	if reqToken != usersTable[username].Token {
+	if reqToken != connTable[username].Token {
 		errorlog(w, "Invalid token", http.StatusBadRequest)
 		return
 	}
-
-	usersTable[username].Token = ""
-	usersTable[username].ExpireAt = 0
+	mu := sync.Mutex{}
+	mu.Lock()
+	connTable[username].Token = ""
+	mu.Unlock()
+	// tokenTable[username].ExpireAt = 0
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		errorlog(w, "Internal Server Error (upgrade)", http.StatusInternalServerError)
 		return
 	}
-	activeUsers[username] = true
-	defer delete(activeUsers, username)
+
+	connTable[username].WS = conn
+	defer delete(connTable, username)
 	defer conn.Close()
+	defer db.CloseTimeUpdate(username)
 	for {
 		mt, message, err := conn.ReadMessage()
 		if err != nil {
@@ -54,10 +60,21 @@ func RequestWithToken(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		log.Printf("recv: %s", message)
-		err = conn.WriteMessage(mt, message)
+		status, err := db.AddMessage(username, string(message))
 		if err != nil {
-			errorlog(w, "Internal Server Error (ws write)", http.StatusInternalServerError)
-			break
+			errorlog(w, err.Error(), status)
+			return
+		}
+
+		for key, val := range connTable {
+			if key != username {
+				tt := append([]byte(username+": "), message...)
+				err = val.WS.WriteMessage(mt, tt)
+				if err != nil {
+					errorlog(w, "Internal Server Error (ws write all)", http.StatusInternalServerError)
+					break
+				}
+			}
 		}
 	}
 }

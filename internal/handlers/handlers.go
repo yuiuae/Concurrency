@@ -18,8 +18,10 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 
-	"github.com/yuiuae/EnhanceHTTPServer/pkg/hasher"
+	"github.com/yuiuae/Concurrency/internal/db"
+	"github.com/yuiuae/Concurrency/pkg/hasher"
 )
 
 // calls per hour allowed by the user
@@ -32,14 +34,15 @@ var tokentime = 60
 var tokenSecretKey = "SecretYouShouldHide"
 
 // Table with users
-var usersTable = map[string]*UserInfo{}
+// var usersTable = map[string]*UserInfo1{}
 
-type UserInfo struct {
-	Passhash string
-	Id       string
+type ConnInfo struct {
+	WS       *websocket.Conn
 	Token    string
 	ExpireAt int64
 }
+
+var connTable = map[string]*ConnInfo{}
 
 // Create a struct that models the structure for a user creating
 // Request
@@ -75,11 +78,11 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 		errorlog(w, "Password should be at least 8 characters", http.StatusBadRequest)
 		return
 	}
-	_, b := usersTable[req.UserName]
-	if b {
-		errorlog(w, "A user with this name already exists", http.StatusConflict)
-		return
-	}
+	// _, b := usersTable[req.UserName]
+	// if b {
+	// 	errorlog(w, "A user with this name already exists", http.StatusConflict)
+	// 	return
+	// }
 
 	// Hash the password using the bcrypt algorithm
 	hashedPassword, err := hasher.HashPassword(req.Password)
@@ -95,6 +98,13 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// add new user to to user table
+	status, err := db.AddNewUser(req.UserName, hashedPassword, uid.String())
+	if err != nil {
+		errorlog(w, err.Error(), status)
+		return
+	}
+
 	// Create response
 	resp := &CrResponse{uid.String(), req.UserName}
 	err = json.NewEncoder(w).Encode(&resp) //&resp
@@ -102,8 +112,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 		errorlog(w, "Internal Server Error (json Encoder error)", http.StatusInternalServerError)
 		return
 	}
-	// add new user to to user table
-	usersTable[req.UserName] = &UserInfo{hashedPassword, uid.String(), "", 0}
+	// usersTable[req.UserName] = &UserInfo1{hashedPassword, uid.String(), ""}
 }
 
 // Create a struct that models the structure for a user login
@@ -132,33 +141,37 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ok := hasher.CheckPasswordHash(usersTable[req.UserName].Passhash, req.Password)
+	_, ok, err := db.PassVerify(req.UserName, req.Password)
+	if err != nil {
+		errorlog(w, "error PassVerify", http.StatusInternalServerError)
+		return
+	}
 	if !ok {
 		errorlog(w, "Invalid username/password", http.StatusBadRequest)
 		return
 	}
-
-	// usersTable[req.UserName].ExpireAt = time.Now().UTC().Add(time.Minute * time.Duration(tokentime))
-	usersTable[req.UserName].ExpireAt = time.Now().UTC().Add(time.Minute * time.Duration(tokentime)).Unix()
+	ctime := time.Now().UTC().Add(time.Minute * time.Duration(tokentime)).Unix()
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
-	claims["Id"] = usersTable[req.UserName].Id
+
+	// claims["Id"] = connTable[req.UserName].Token
 	claims["username"] = req.UserName
-	claims["exp"] = usersTable[req.UserName].ExpireAt
+	claims["exp"] = ctime
 	fmt.Println(claims)
 	tokenString, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(tokenSecretKey))
-	usersTable[req.UserName].Token = tokenString
+	connTable[req.UserName] = &ConnInfo{nil, tokenString, ctime}
+
 	if err != nil {
 		http.Error(w, "Internal Server Error (jwt Encoder)", http.StatusInternalServerError)
 		return
 	}
 
-	url := fmt.Sprintf("ws://localhost:8080/chat?token=%s", usersTable[req.UserName].Token)
+	url := fmt.Sprintf("ws://localhost:8080/chat?token=%s", connTable[req.UserName].Token)
 	resp := &LogResponse{url}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Add("X-Rate-Limit", strconv.Itoa(callperhour))
-	w.Header().Add("X-Expires-After", strconv.Itoa(int(usersTable[req.UserName].ExpireAt)))
+	w.Header().Add("X-Expires-After", strconv.Itoa(int(connTable[req.UserName].ExpireAt)))
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		errorlog(w, "Internal Server Error (json Encoder)", http.StatusInternalServerError)

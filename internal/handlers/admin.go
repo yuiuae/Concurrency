@@ -12,6 +12,8 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/yuiuae/Concurrency/internal/db"
 )
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -31,13 +33,19 @@ func Index(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetUserAll(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("TEST")
 	if r.Method != "GET" {
 		errorlog(w, "Only GET method allowed", http.StatusBadRequest)
 		return
 	}
+	users, err := db.GetAllUsers()
+	if err != nil {
+		errorlog(w, "Internal Server Error (GetAllUsers)", http.StatusInternalServerError)
+		return
 
-	for key, val := range usersTable {
-		fmt.Fprintf(w, "\n%s: ID = %v, PassHash = %v, token = %v", key, val.Id, val.Passhash, val.Token)
+	}
+	for key, val := range users {
+		fmt.Fprintln(w, key, "- ", val.Username, val.UserPassHash, val.UserUUID)
 	}
 
 }

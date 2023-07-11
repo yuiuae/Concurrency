@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/yuiuae/Testing/internal/handlers"
-	"github.com/yuiuae/Testing/internal/middleware"
+	"github.com/yuiuae/Concurrency/internal/handlers"
+	"github.com/yuiuae/Concurrency/internal/middleware"
 )
 
 func main() {
@@ -14,6 +14,10 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+	// fmt.Println("YUI TEST")
+	// server := chat.NewServer("/entry")
+	// go server.Listen()
+
 	http.Handle("/", middleware.MiddleLog(http.HandlerFunc(handlers.Index)))
 	http.Handle("/user", middleware.MiddleLog(http.HandlerFunc(handlers.UserCreate)))
 	http.Handle("/user/login", middleware.MiddleLog(http.HandlerFunc(handlers.UserLogin)))
