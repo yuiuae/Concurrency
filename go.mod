@@ -13,5 +13,6 @@ require (
 
 require (
 	github.com/go-sql-driver/mysql v1.7.1 // indirect
+	github.com/yuiuae/Generate v0.0.0-20230714080057-ce52cd92283f // indirect
 	golang.org/x/net v0.12.0 // indirect
 )

@@ -8,6 +8,8 @@ github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWm
 github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/yuiuae/EnhanceHTTPServer v0.0.0-20230612100050-ecaaf1819c09 h1:4CyWQ0d4kXm/bN4BQS5vwZfQZ42o6cCsnKcGQ2L2Gc0=
 github.com/yuiuae/EnhanceHTTPServer v0.0.0-20230612100050-ecaaf1819c09/go.mod h1:qRh9zPsCiNeV8qPthmYB5lMyHpyXEG+VTOAIAY8cYzI=
+github.com/yuiuae/Generate v0.0.0-20230714080057-ce52cd92283f h1:pXr4cZiyQsyjNn+NZQZNH4aT/TEnAn5RL6+gP+W4Lu4=
+github.com/yuiuae/Generate v0.0.0-20230714080057-ce52cd92283f/go.mod h1:/5dtoxCfsJtTu7alVXxEJtvj+bHAMxDDonWtg71CPV0=
 github.com/yuiuae/Testing v0.0.0-20230620082026-dc057c64c4b2 h1:SVojl+KjCxc/h15G4U6dCGx0AxW8qMk6uqXYRV8keNw=
 github.com/yuiuae/Testing v0.0.0-20230620082026-dc057c64c4b2/go.mod h1:rIaXPydkye4/bydQrte005wXkjpU7fj1WJ1c3og5IyY=
 golang.org/x/crypto v0.10.0 h1:LKqV2xt9+kDzSTfOhx4FrkEBcMrAgHSYgzywV9zcGmM=
